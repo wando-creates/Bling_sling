@@ -9,18 +9,75 @@ font = pygame.font.SysFont(None, 24)
 class Bullet:
     def __init__(self, x, y, direction):
         self.rect = pygame.Rect(x,y,5,5)
-        self.speed = 50
+        self.speed = 25
         self.direction = direction.normalize()
+        self.dead = False
     
-    def update(self):
+    def update(self, tiles):
         self.rect.x += self.direction.x * self.speed
         self.rect.y += self.direction.y * self.speed
+
+        for tile in tiles:
+            if self.rect.colliderect(tile):
+                self.dead = True
+                return
     
     def draw(self, screen):
         pygame.draw.rect(screen, (255,255,0), self.rect)
     
     def is_off_screen(self):
         return (self.rect.x < 0 or self.rect.x > screen_width or self.rect.y < 0 or self.rect.y > screen_height)
+    
+class Enemy:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x,y, 40,40)
+        self.speed = 2
+        self.health = 3
+        self.dead = False
+    
+    def update(self, player_pos, tiles):
+        if self.dead:
+            return
+
+        enemy_center = Vector2(self.rect.centerx, self.rect.centery)
+        direction = player_pos - enemy_center
+
+        if direction.length() > 0:
+            direction = direction.normalize() * self.speed
+
+            self.rect.x += direction.x
+
+            for tile in tiles:
+                if self.rect.colliderect(tile):
+                    if direction.x > 0:
+                        self.rect.right = tile.left
+                    elif direction.x < 0:
+                        self.rect.left = tile.right
+            
+            self.rect.y += direction.y
+
+            for tile in tiles:
+                if self.rect.colliderect(tile):
+                    if direction.y > 0:
+                        self.rect.bottom = tile.top
+                    elif direction.y < 0:
+                        self.rect.top = tile.bottom
+                    break
+
+    def take_damage(self):
+        self.health -= 1
+        if self.health <= 0:
+            self.dead = True
+    
+    def draw(self, screen):
+        if not self.dead:
+            pygame.draw.rect(screen, (255,0,0), self.rect)
+
+            health_bar_width = 40
+            health_bar_height = 5
+            health_width = (self.health / 3) * health_bar_width
+            pygame.draw.rect(screen, (0,255,0), (self.rect.x, self.rect.y - 10, health_width, health_bar_height))
+
 
 
 class Player:
@@ -58,17 +115,42 @@ class Player:
             bullet = Bullet(self.rect.centerx, self.rect.centery, direction)
             self.bullets.append(bullet)
 
-    def update(self):
+    def update(self, tiles, enemies):
         self.rect.x += self.vel.x 
+
+        for tile in tiles:
+            if self.rect.colliderect(tile):
+                if self.vel.x > 0:
+                    self.rect.right = tile.left
+                elif self.vel.x <0:
+                    self.rect.left = tile.right
+                break
+
         self.rect.y += self.vel.y 
 
+        for tile in tiles:
+            if self.rect.colliderect(tile):
+                if self.vel.y > 0:
+                    self.rect.bottom = tile.top
+                elif self.vel.y < 0:
+                    self.rect.top = tile.bottom
+                break
+
+
         for bullet in self.bullets[:]:
-            bullet.update()
-            if bullet.is_off_screen():
+            bullet.update(tiles)
+
+            for enemy in enemies:
+                if not enemy.dead and bullet.rect.colliderect(enemy.rect):
+                    enemy.take_damage()
+                    bullet.dead = True
+                    break
+                
+            if bullet.is_off_screen() or bullet.dead:
                 self.bullets.remove(bullet)
 
     def draw(self, screen):
-        pygame.draw.rect(screen, (255,255,255), self.rect)
+        pygame.draw.rect(screen, (100,100,100), self.rect)
 
         for bullet in self.bullets:
             bullet.draw(screen)
@@ -79,6 +161,6 @@ class Player:
         position_text = font.render(f"Position: ({self.rect.x}, {self.rect.y})", True, (255,255,255))
         screen.blit(position_text, (10,40))
 
-    
+
 
 

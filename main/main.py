@@ -1,6 +1,6 @@
 import pygame
 import json
-from player import Player
+from player import *
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -25,7 +25,13 @@ def load_map(filename, tile_size):
     
 
 tiles, tilemap = load_map("map1.json", TILE_SIZE)
+
 player = Player(200,200)
+enemies = [
+    Enemy(500,300),
+    Enemy(800, 400),
+    Enemy(300, 600)
+]
 
 running = True
 while running:
@@ -47,10 +53,19 @@ while running:
     for tile in tiles:
         pygame.draw.rect(screen, (100,100,100), tile)
 
+    player_pos = Vector2(player.rect.centerx, player.rect.centery)
+    for enemy in enemies:
+        enemy.update(player_pos, tiles)
+        enemy.draw(screen)
+
     player.move()
-    player.update()
+    player.update(tiles, enemies)
     player.draw(screen)
 
+    alive_enemies = sum(1 for e in enemies if not e.dead)
+    enemy_text = font.render(f"Enemies: {alive_enemies}/{len(enemies)}", True, (255,255,255))
+    screen.blit(enemy_text, (10,100))
+    
     pygame.display.flip()
     clock.tick(60)
 pygame.quit()
