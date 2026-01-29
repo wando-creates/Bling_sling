@@ -17,17 +17,21 @@ TILE_SIZE = 50
 def load_map(filename, tile_size):
     try:
         with open(filename, "r") as f:
-            tilemap = json.load(f)
+            data = json.load(f)
+        tilemap = data["tiles"]
+        enemy_positions = data["enemies"]
+
         tiles = []
+
         for y, row in enumerate(tilemap):
             for x, tile in enumerate(row):
                 if tile == 1:
                     rect = pygame.Rect(x * tile_size, y * tile_size, tile_size, tile_size)
                     tiles.append(rect)
-        return tiles, tilemap
+        return tiles, tilemap, enemy_positions
     except FileNotFoundError:
         print(f"Map File {filename} not found")
-        return [], []
+        return [], [], []
     
 def pixel_to_tile(px, py, tile_size):
     return int(px // tile_size), int(py // tile_size)
@@ -63,14 +67,12 @@ def has_line_of_sight(start_px, end_px, tilemap, tile_size):
     return True
 
 
-tiles, tilemap = load_map("map1.json", TILE_SIZE)
+tiles, tilemap, enemy_positions = load_map("map1.json", TILE_SIZE)
 
 player = Player(200,200)
-enemies = [
-    Enemy(225,877),
-    Enemy(1650, 243),
-    Enemy(1510, 588)
-]
+enemies = []
+for x, y in enemy_positions:
+    enemies.append(Enemy(x * TILE_SIZE, y * TILE_SIZE))
 
 running = True
 while running:

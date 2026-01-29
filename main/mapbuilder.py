@@ -12,10 +12,15 @@ clock = pygame.time.Clock()
 tilemap = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
 mouse_down = False
 paint_tile = 1
+enemies = []
 
 def save_map():
+    data = {
+        "tiles": tilemap,
+        "enemies": enemies
+    }
     with open(MAP_FILE, "w") as f:
-        json.dump(tilemap, f)
+        json.dump(data, f)
 
 def draw_grid():
     for x in range(0, screen_width, TILE_SIZE):
@@ -31,6 +36,12 @@ def draw_tiles():
                 rect_y = y * TILE_SIZE 
                 pygame.draw.rect(screen, (100,100,100), (rect_x, rect_y, TILE_SIZE, TILE_SIZE))
 
+def draw_enemies():
+    for x, y in enemies:
+        px = x * TILE_SIZE + TILE_SIZE // 2
+        py = y * TILE_SIZE + TILE_SIZE // 2
+        pygame.draw.circle(screen, (255,0,0), (px, py), 10)
+
 running = True
 while running:
     clock.tick(60)
@@ -45,6 +56,10 @@ while running:
                 running = False
             if event.key == pygame.K_F5:
                 save_map()
+            if event.key == pygame.K_1:
+                paint_tile = "tiles"
+            if event.key == pygame.K_2:
+                paint_tile = "enemies"
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mouse_down = True
@@ -58,8 +73,16 @@ while running:
         grid_y = my // TILE_SIZE
 
         if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
-            tilemap[grid_y][grid_x] = paint_tile
-    
+            if paint_tile == "tiles":
+                tilemap[grid_y][grid_x] = 1
+            
+            elif paint_tile == "enemies":
+                pos = (grid_x, grid_y)
+                if pos not in enemies:
+                    enemies.append(pos)
+        
+
+    draw_enemies()
     draw_tiles()
     draw_grid()
     pygame.display.flip()
