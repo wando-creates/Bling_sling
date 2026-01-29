@@ -1,10 +1,7 @@
 import pygame
 from pygame.math import Vector2
-pygame.font.init()
 
-screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-screen_width, screen_height = screen.get_width(), screen.get_height()
-font = pygame.font.SysFont(None, 24)
+pygame.font.init()
 
 class Bullet:
     def __init__(self, x, y, direction):
@@ -25,7 +22,8 @@ class Bullet:
     def draw(self, screen):
         pygame.draw.rect(screen, (255,255,0), self.rect)
     
-    def is_off_screen(self):
+    def is_off_screen(self, screen_size):
+        screen_width, screen_height = screen_size
         return (self.rect.x < 0 or self.rect.x > screen_width or self.rect.y < 0 or self.rect.y > screen_height)
     
 class Enemy:
@@ -42,28 +40,29 @@ class Enemy:
         enemy_center = Vector2(self.rect.centerx, self.rect.centery)
         direction = player_pos - enemy_center
 
-        if direction.length() > 0:
-            direction = direction.normalize() * self.speed
+        if direction.length() == 0:
+            return
+        direction = direction.normalize() * self.speed
 
-            self.rect.x += direction.x
+        self.rect.x += direction.x
 
-            for tile in tiles:
-                if self.rect.colliderect(tile):
-                    if direction.x > 0:
-                        self.rect.right = tile.left
-                    elif direction.x < 0:
-                        self.rect.left = tile.right
-            
-            self.rect.y += direction.y
+        for tile in tiles:
+            if self.rect.colliderect(tile):
+                if direction.x > 0:
+                    self.rect.right = tile.left
+                elif direction.x < 0:
+                    self.rect.left = tile.right
+        
+        self.rect.y += direction.y
 
-            for tile in tiles:
-                if self.rect.colliderect(tile):
-                    if direction.y > 0:
-                        self.rect.bottom = tile.top
-                    elif direction.y < 0:
-                        self.rect.top = tile.bottom
-                    break
-
+        for tile in tiles:
+            if self.rect.colliderect(tile):
+                if direction.y > 0:
+                    self.rect.bottom = tile.top
+                elif direction.y < 0:
+                    self.rect.top = tile.bottom
+                break
+    
     def take_damage(self):
         self.health -= 1
         if self.health <= 0:
@@ -115,7 +114,7 @@ class Player:
             bullet = Bullet(self.rect.centerx, self.rect.centery, direction)
             self.bullets.append(bullet)
 
-    def update(self, tiles, enemies):
+    def update(self, tiles, enemies, screen_size):
         self.rect.x += self.vel.x 
 
         for tile in tiles:
@@ -146,10 +145,10 @@ class Player:
                     bullet.dead = True
                     break
                 
-            if bullet.is_off_screen() or bullet.dead:
+            if bullet.is_off_screen(screen_size) or bullet.dead:
                 self.bullets.remove(bullet)
 
-    def draw(self, screen):
+    def draw(self, screen, font):
         pygame.draw.rect(screen, (100,100,100), self.rect)
 
         for bullet in self.bullets:
