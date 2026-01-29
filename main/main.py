@@ -1,5 +1,6 @@
 import pygame
 import json
+import random
 from player import Player, Enemy
 from pygame.math import Vector2
 
@@ -35,12 +36,12 @@ def pixel_to_tile(px, py, tile_size):
 def has_line_of_sight(start_px, end_px, tilemap, tile_size):
     x0, y0 = start_px
     x1, y1=  end_px
-    tx0, ty0 = pixel_to_tile(x0, y0, tile_size)
-    tx1, ty1 = pixel_to_tile(x1, y1, tile_size)
-    dx = tx1 - tx0
-    dy = ty1 - ty0
 
-    steps = max(abs(dx), abs(dy))
+    dx = x1 - x0
+    dy = y1 - y0
+
+    steps = max(abs(dx), abs(dy) // tile_size)
+
     if steps == 0:
         return True
     
@@ -50,10 +51,11 @@ def has_line_of_sight(start_px, end_px, tilemap, tile_size):
     x, y = x0, y0
 
     for _ in range(steps):
-        if y < 0 or y >= len(tilemap) or x < 0 or x >= len(tilemap[0]):
+        tx, ty = pixel_to_tile(x,y, tile_size)
+        if ty < 0 or ty >= len(tilemap) or tx < 0 or tx >= len(tilemap[0]):
             return False
 
-        if tilemap[int(y)][int(x)] == 1:
+        if tilemap[ty][tx] == 1:
             return False
         
         x += step_x
@@ -92,13 +94,11 @@ while running:
 
     player_pos = Vector2(player.rect.centerx, player.rect.centery)
     for enemy in enemies:
-        enemy.update(player_pos, tiles)
         enemy.draw(screen) 
         can_see_player = has_line_of_sight(enemy.rect.center, player.rect.center, tilemap, TILE_SIZE)
-        if can_see_player:
-            enemy.update(player_pos, tiles)    
+        enemy.update(player_pos, tiles, can_see_player) 
 
-        pygame.draw.line(screen, (0,255,0) if can_see_player else (255,0,0), enemy.rect.center, player.rect.center, 2)
+        #pygame.draw.line(screen, (0,255,0) if can_see_player else (255,0,0), enemy.rect.center, player.rect.center, 2)
 
     player.move()
     player.update(tiles, enemies, (screen_width, screen_height))

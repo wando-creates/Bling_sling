@@ -1,4 +1,5 @@
 import pygame
+import random
 from pygame.math import Vector2
 
 pygame.font.init()
@@ -32,16 +33,110 @@ class Enemy:
         self.speed = 2
         self.health = 3
         self.dead = False
+
+        self.state = "patrol"
+        self.patrol_target = None
+        self.patrol_timer = 0
+
+    def pick_patrol_target(self, tiles):
+        for _ in range(20):
+            x = self.rect.centerx + random.randint(-300,300)
+            y = self.rect.centery + random.randint(-300,300)
+            test_rect = pygame.Rect(x - 20, y - 20, 40, 40)
+            
+            if not any(test_rect.colliderect(t) for t in tiles):
+                self.patrol_target = Vector2(x, y)
+                return
     
-    def update(self, player_pos, tiles):
-        if self.dead:
+    def patrol(self, tiles):
+        if self.patrol_target is None:
+            self.pick_patrol_target(tiles)
             return
+        pos = Vector2(self.rect.center)
+        direction = self.patrol_target - pos
 
-        enemy_center = Vector2(self.rect.centerx, self.rect.centery)
-        direction = player_pos - enemy_center
+        if direction.length() < 10:
+            self.patrol_target = None
+            return
+        
+        direction = direction.normalize() * (self.speed)
+        moved = self.move_with_collisions(direction, tiles)
+    
+        if not moved:
+            self.patrol_target = None
+            
+    def move_with_collisions(self, direction, tiles):
+        moved = True
 
+        self.rect.x += direction.x
+        for tile in tiles:
+            if self.rect.colliderect(tile):
+                self.rect.x -= direction.x
+                moved = False
+                break
+
+        self.rect.y += direction.y
+        for tile in tiles:
+            if self.rect.colliderect(tile):
+                self.rect.y -= direction.y
+                moved = False
+                break
+        
+        return moved
+
+    def chase(self, player_pos, tiles):
+        pos = Vector2(self.rect.center)
+        direction = player_pos - pos
         if direction.length() == 0:
             return
+        
+        direction = direction.normalize() * self.speed
+        self.move_with_collisions(direction, tiles)
+    def update(self, player_pos, tiles, can_see_player):
+
+        if self.dead:
+            return
+        
+        if can_see_player:
+            self.state = "chase"
+        else:
+            self.state = "patrol"
+            self.patrol(tiles)
+            return
+        
+        pos = Vector2(self.rect.center)
+
+        seek = player_pos  - pos
+        if seek.length() > 0:
+            seek = seek.normalize()
+        
+        avoid = Vector2(0,0)
+        AVOID_RADIUS = 50
+
+        for tile in tiles:
+            if not self.rect.colliderect(tile.inflate(AVOID_RADIUS * 2, AVOID_RADIUS * 2)):
+                
+                closest_x = max(tile.left, min(pos.x, tile.right))
+                closest_y = max(tile.top, min(pos.y, tile.bottom))
+                closest = Vector2(closest_x, closest_y)
+
+                diff = pos - closest
+                dist = diff.length()
+
+                if 0 < dist < AVOID_RADIUS:
+                    strength = (AVOID_RADIUS - dist) / AVOID_RADIUS
+                    avoid += diff.normalize() * strength
+        
+        
+        if avoid.length() > 0:
+            avoid = avoid.normalize() * 1.5
+
+#------------- COLLISIONS FOR ENEMYS -------------#
+
+        direction = seek  * 1.0 + avoid * 0.8
+        if direction.length() == 0:
+            return
+        
         direction = direction.normalize() * self.speed
 
         self.rect.x += direction.x
