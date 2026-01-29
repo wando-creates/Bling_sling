@@ -9,7 +9,7 @@ font = pygame.font.SysFont(None, 24)
 class Bullet:
     def __init__(self, x, y, direction):
         self.rect = pygame.Rect(x,y,5,5)
-        self.speed = 10
+        self.speed = 50
         self.direction = direction.normalize()
     
     def update(self):
